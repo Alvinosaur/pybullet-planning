@@ -8,15 +8,18 @@ from itertools import combinations
 import numpy as np
 
 from .pr2_never_collisions import NEVER_COLLISIONS
-from .utils import multiply, get_link_pose, set_joint_position, set_joint_positions, get_joint_positions, get_min_limit, get_max_limit, quat_from_euler, read_pickle, set_pose, \
+from .utils import multiply, get_link_pose, set_joint_position, set_joint_positions, get_joint_positions, get_min_limit, \
+    get_max_limit, quat_from_euler, read_pickle, set_pose, \
     get_pose, euler_from_quat, link_from_name, point_from_pose, invert, Pose, \
-    unit_pose, joints_from_names, PoseSaver, get_aabb, get_joint_limits, ConfSaver, get_bodies, create_mesh, remove_body, \
+    unit_pose, joints_from_names, PoseSaver, get_aabb, get_joint_limits, ConfSaver, get_bodies, create_mesh, \
+    remove_body, \
     unit_from_theta, violates_limit, \
     violates_limits, add_line, get_body_name, get_num_joints, approximate_as_cylinder, \
     approximate_as_prism, unit_quat, unit_point, angle_between, quat_from_pose, compute_jacobian, \
     movable_from_joints, quat_from_axis_angle, LockRenderer, Euler, get_links, get_link_name, \
     get_extend_fn, get_moving_links, link_pairs_collision, get_link_subtree, \
-    clone_body, get_all_links, pairwise_collision, tform_point, get_camera_matrix, ray_from_pixel, pixel_from_ray, dimensions_from_camera_matrix, \
+    clone_body, get_all_links, pairwise_collision, tform_point, get_camera_matrix, ray_from_pixel, pixel_from_ray, \
+    dimensions_from_camera_matrix, \
     wrap_angle, TRANSPARENT, PI, OOBB, pixel_from_point, set_all_color, wait_if_gui
 
 # TODO: restrict number of pr2 rotations to prevent from wrapping too many times
@@ -25,24 +28,30 @@ LEFT_ARM = 'left'
 RIGHT_ARM = 'right'
 ARM_NAMES = (LEFT_ARM, RIGHT_ARM)
 
+
 def side_from_arm(arm):
     side = arm.split('_')[0]
     assert side in ARM_NAMES
     return side
 
+
 side_from_gripper = side_from_arm
 
-def arm_from_arm(arm): # TODO: deprecate
+
+def arm_from_arm(arm):  # TODO: deprecate
     side = side_from_arm(arm)
     assert (side in ARM_NAMES)
     return '{}_arm'.format(side)
 
+
 arm_from_side = arm_from_arm
 
-def gripper_from_arm(arm): # TODO: deprecate
+
+def gripper_from_arm(arm):  # TODO: deprecate
     side = side_from_arm(arm)
     assert (side in ARM_NAMES)
     return '{}_gripper'.format(side)
+
 
 gripper_from_side = gripper_from_arm
 
@@ -56,7 +65,7 @@ PR2_GROUPS = {
     'head': ['head_pan_joint', 'head_tilt_joint'],
     arm_from_arm(LEFT_ARM): ['l_shoulder_pan_joint', 'l_shoulder_lift_joint', 'l_upper_arm_roll_joint',
                              'l_elbow_flex_joint', 'l_forearm_roll_joint', 'l_wrist_flex_joint', 'l_wrist_roll_joint'],
-    arm_from_arm(RIGHT_ARM): ['r_shoulder_pan_joint', 'r_shoulder_lift_joint', 'r_upper_arm_roll_joint', 
+    arm_from_arm(RIGHT_ARM): ['r_shoulder_pan_joint', 'r_shoulder_lift_joint', 'r_upper_arm_roll_joint',
                               'r_elbow_flex_joint', 'r_forearm_roll_joint', 'r_wrist_flex_joint', 'r_wrist_roll_joint'],
     gripper_from_arm(LEFT_ARM): ['l_gripper_l_finger_joint', 'l_gripper_r_finger_joint',
                                  'l_gripper_l_finger_tip_joint', 'l_gripper_r_finger_tip_joint'],
@@ -65,7 +74,7 @@ PR2_GROUPS = {
     # r_gripper_joint & l_gripper_joint are not mimicked
 }
 
-HEAD_LINK_NAME = 'high_def_optical_frame' # high_def_optical_frame | high_def_frame | wide_stereo_l_stereo_camera_frame
+HEAD_LINK_NAME = 'high_def_optical_frame'  # high_def_optical_frame | high_def_frame | wide_stereo_l_stereo_camera_frame
 # kinect - 'head_mount_kinect_rgb_optical_frame' | 'head_mount_kinect_rgb_link'
 
 PR2_TOOL_FRAMES = {
@@ -83,9 +92,9 @@ PR2_GRIPPER_ROOTS = {
 PR2_BASE_LINK = 'base_footprint'
 
 # Arm tool poses
-#TOOL_POSE = ([0.18, 0., 0.], [0., 0.70710678, 0., 0.70710678]) # l_gripper_palm_link
-TOOL_POSE = Pose(euler=Euler(pitch=np.pi/2)) # l_gripper_tool_frame (+x out of gripper arm)
-#TOOL_DIRECTION = [0., 0., 1.]
+# TOOL_POSE = ([0.18, 0., 0.], [0., 0.70710678, 0., 0.70710678]) # l_gripper_palm_link
+TOOL_POSE = Pose(euler=Euler(pitch=np.pi / 2))  # l_gripper_tool_frame (+x out of gripper arm)
+# TOOL_DIRECTION = [0., 0., 1.]
 
 #####################################
 
@@ -99,12 +108,12 @@ WIDE_LEFT_ARM = [1.5806603449288885, -0.14239066980481405, 1.4484623937179126, -
 CENTER_LEFT_ARM = [-0.07133691252641006, -0.052973836083405494, 1.5741805775919033, -1.4481146328076862,
                    1.571782540186805, -1.4891468812835686, -9.413338322697955]
 STRAIGHT_LEFT_ARM = np.zeros(7)
-COMPACT_LEFT_ARM = [PI/4, 0., PI/2, -5*PI/8, PI/2, -PI/2, 5*PI/8] # TODO: generate programmatically
+COMPACT_LEFT_ARM = [PI / 4, 0., PI / 2, -5 * PI / 8, PI / 2, -PI / 2, 5 * PI / 8]  # TODO: generate programmatically
 
-#COMPACT_LEFT_ARM = [PI/4, 0., PI/2, -5*PI/8, -PI/2, -PI/2, 3*PI/8] # More inward
-#COMPACT_LEFT_ARM = [1*PI/8, 0., PI/2, -4*PI/8, -PI/2, -PI/2, 3*PI/8-PI/2] # Most inward
+# COMPACT_LEFT_ARM = [PI/4, 0., PI/2, -5*PI/8, -PI/2, -PI/2, 3*PI/8] # More inward
+# COMPACT_LEFT_ARM = [1*PI/8, 0., PI/2, -4*PI/8, -PI/2, -PI/2, 3*PI/8-PI/2] # Most inward
 
-CLEAR_LEFT_ARM = [PI/2, 0., PI/2, -PI/2, PI/2, -PI/2, 0.]
+CLEAR_LEFT_ARM = [PI / 2, 0., PI / 2, -PI / 2, PI / 2, -PI / 2, 0.]
 # WIDE_RIGHT_ARM = [-1.3175723551150083, -0.09536552225976803, -1.396727055561703, -1.4433371993320296,
 #                   -1.5334243909312468, -1.7298129320065025, 6.230244924007009]
 
@@ -115,13 +124,15 @@ PR2_LEFT_CARRY_CONFS = {
 
 #####################################
 
-PR2_URDF = "models/pr2_description/pr2.urdf" # 87 joints
-#PR2_URDF = "models/pr2_description/pr2_hpn.urdf"
-#PR2_URDF = "models/pr2_description/pr2_kinect.urdf"
-DRAKE_PR2_URDF = "models/drake/pr2_description/urdf/pr2_simplified.urdf" # 82 joints
+PR2_URDF = "models/pr2_description/pr2.urdf"  # 87 joints
+# PR2_URDF = "models/pr2_description/pr2_hpn.urdf"
+# PR2_URDF = "models/pr2_description/pr2_kinect.urdf"
+DRAKE_PR2_URDF = "models/drake/pr2_description/urdf/pr2_simplified.urdf"  # 82 joints
 
-def is_drake_pr2(robot): # 87
+
+def is_drake_pr2(robot):  # 87
     return (get_body_name(robot) == 'pr2') and (get_num_joints(robot) == 82)
+
 
 #####################################
 
@@ -141,9 +152,11 @@ def is_drake_pr2(robot): # 87
 def get_base_pose(pr2):
     return get_link_pose(pr2, link_from_name(pr2, PR2_BASE_LINK))
 
+
 def rightarm_from_leftarm(config):
     right_from_left = np.array([-1, 1, -1, 1, -1, 1, -1])
     return config * right_from_left
+
 
 def arm_conf(arm, left_config):
     side = side_from_arm(arm)
@@ -153,8 +166,10 @@ def arm_conf(arm, left_config):
         return rightarm_from_leftarm(left_config)
     raise ValueError(side)
 
+
 def get_carry_conf(arm, grasp_type):
     return arm_conf(arm, PR2_LEFT_CARRY_CONFS[grasp_type])
+
 
 def get_other_arm(arm):
     for other_arm in ARM_NAMES:
@@ -162,13 +177,14 @@ def get_other_arm(arm):
             return other_arm
     raise ValueError(arm)
 
+
 #####################################
 
 def get_disabled_collisions(pr2):
-    #disabled_names = PR2_ADJACENT_LINKS
-    #disabled_names = PR2_DISABLED_COLLISIONS
+    # disabled_names = PR2_ADJACENT_LINKS
+    # disabled_names = PR2_DISABLED_COLLISIONS
     disabled_names = NEVER_COLLISIONS
-    #disabled_names = PR2_DISABLED_COLLISIONS + NEVER_COLLISIONS
+    # disabled_names = PR2_DISABLED_COLLISIONS + NEVER_COLLISIONS
     link_mapping = {get_link_name(pr2, link): link for link in get_links(pr2)}
     return {(link_mapping[name1], link_mapping[name2])
             for name1, name2 in disabled_names if (name1 in link_mapping) and (name2 in link_mapping)}
@@ -198,30 +214,37 @@ def load_srdf_collisions():
             disabled_collisions.append((link1, link2))
     return disabled_collisions
 
+
 #####################################
 
 def get_groups():
     return sorted(PR2_GROUPS)
 
+
 def get_group_joints(robot, group):
     return joints_from_names(robot, PR2_GROUPS[group])
+
 
 def get_group_conf(robot, group):
     return get_joint_positions(robot, get_group_joints(robot, group))
 
-#get_group_position = get_group_conf
+
+# get_group_position = get_group_conf
 
 def set_group_conf(robot, group, positions):
     set_joint_positions(robot, get_group_joints(robot, group), positions)
+
 
 def set_group_positions(robot, group_positions):
     for group, positions in group_positions.items():
         set_group_conf(robot, group, positions)
 
+
 def get_group_positions(robot):
     return {group: get_group_conf(robot, group) for group in get_groups()}
 
-#get_group_confs = get_group_positions
+
+# get_group_confs = get_group_positions
 
 #####################################
 
@@ -235,7 +258,7 @@ def get_torso_arm_joints(robot, arm):
     return joints_from_names(robot, PR2_GROUPS['torso'] + PR2_GROUPS[arm_from_arm(arm)])
 
 
-#def get_arm_conf(robot, arm):
+# def get_arm_conf(robot, arm):
 #    return get_joint_positions(robot, get_arm_joints(robot, arm))
 
 
@@ -264,7 +287,7 @@ def set_gripper_position(robot, arm, position):
     set_joint_positions(robot, gripper_joints, [position] * len(gripper_joints))
 
 
-def open_arm(robot, arm): # These are mirrored on the pr2
+def open_arm(robot, arm):  # These are mirrored on the pr2
     for joint in get_gripper_joints(robot, arm):
         set_joint_position(robot, joint, get_max_limit(robot, joint))
 
@@ -272,6 +295,7 @@ def open_arm(robot, arm): # These are mirrored on the pr2
 def close_arm(robot, arm):
     for joint in get_gripper_joints(robot, arm):
         set_joint_position(robot, joint, get_min_limit(robot, joint))
+
 
 # TODO: use these names
 open_gripper = open_arm
@@ -281,14 +305,15 @@ close_gripper = close_arm
 
 # Box grasps
 
-#GRASP_LENGTH = 0.04
-GRASP_LENGTH = 0.
-#GRASP_LENGTH = -0.01
+GRASP_LENGTH = 0.04
+# GRASP_LENGTH = 0.
+# GRASP_LENGTH = -0.01
 
-#MAX_GRASP_WIDTH = 0.07
+# MAX_GRASP_WIDTH = 0.07
 MAX_GRASP_WIDTH = np.inf
 
-SIDE_HEIGHT_OFFSET = 0.03 # z distance from top of object
+SIDE_HEIGHT_OFFSET = 0.03  # z distance from top of object
+
 
 def get_top_grasps(body, under=False, tool_pose=TOOL_POSE, body_pose=unit_pose(),
                    max_width=MAX_GRASP_WIDTH, grasp_length=GRASP_LENGTH):
@@ -296,7 +321,7 @@ def get_top_grasps(body, under=False, tool_pose=TOOL_POSE, body_pose=unit_pose()
     center, (w, l, h) = approximate_as_prism(body, body_pose=body_pose)
     reflect_z = Pose(euler=[0, math.pi, 0])
     translate_z = Pose(point=[0, 0, h / 2 - grasp_length])
-    translate_center = Pose(point=point_from_pose(body_pose)-center)
+    translate_center = Pose(point=point_from_pose(body_pose) - center)
     grasps = []
     if w <= max_width:
         for i in range(1 + under):
@@ -310,14 +335,15 @@ def get_top_grasps(body, under=False, tool_pose=TOOL_POSE, body_pose=unit_pose()
                                 reflect_z, translate_center, body_pose)]
     return grasps
 
+
 def get_side_grasps(body, under=False, tool_pose=TOOL_POSE, body_pose=unit_pose(),
                     max_width=MAX_GRASP_WIDTH, grasp_length=GRASP_LENGTH, top_offset=SIDE_HEIGHT_OFFSET):
     # TODO: compute bounding box width wrt tool frame
     center, (w, l, h) = approximate_as_prism(body, body_pose=body_pose)
-    translate_center = Pose(point=point_from_pose(body_pose)-center)
+    translate_center = Pose(point=point_from_pose(body_pose) - center)
     grasps = []
-    #x_offset = 0
-    x_offset = h/2 - top_offset
+    # x_offset = 0
+    x_offset = h / 2 - top_offset
     for j in range(1 + under):
         swap_xz = Pose(euler=[0, -math.pi / 2 + j * math.pi, 0])
         if w <= max_width:
@@ -334,6 +360,7 @@ def get_side_grasps(body, under=False, tool_pose=TOOL_POSE, body_pose=unit_pose(
                                     translate_center, body_pose)]  # , np.array([l])
     return grasps
 
+
 #####################################
 
 # Cylinder grasps
@@ -344,44 +371,47 @@ def get_top_cylinder_grasps(body, tool_pose=TOOL_POSE, body_pose=unit_pose(),
     center, (diameter, height) = approximate_as_cylinder(body, body_pose=body_pose)
     reflect_z = Pose(euler=[0, math.pi, 0])
     translate_z = Pose(point=[0, 0, height / 2 - grasp_length])
-    translate_center = Pose(point=point_from_pose(body_pose)-center)
+    translate_center = Pose(point=point_from_pose(body_pose) - center)
     if max_width < diameter:
         return
     while True:
-        theta = random.uniform(0, 2*np.pi)
+        theta = random.uniform(0, 2 * np.pi)
         rotate_z = Pose(euler=[0, 0, theta])
         yield multiply(tool_pose, translate_z, rotate_z,
                        reflect_z, translate_center, body_pose)
+
 
 def get_side_cylinder_grasps(body, under=False, tool_pose=TOOL_POSE, body_pose=unit_pose(),
                              max_width=MAX_GRASP_WIDTH, grasp_length=GRASP_LENGTH,
                              top_offset=SIDE_HEIGHT_OFFSET):
     center, (diameter, height) = approximate_as_cylinder(body, body_pose=body_pose)
-    translate_center = Pose(point_from_pose(body_pose)-center)
-    #x_offset = 0
-    x_offset = height/2 - top_offset
+    translate_center = Pose(point_from_pose(body_pose) - center)
+    # x_offset = 0
+    x_offset = height / 2 - top_offset
     if max_width < diameter:
         return
     while True:
-        theta = random.uniform(0, 2*np.pi)
+        theta = random.uniform(0, 2 * np.pi)
         translate_rotate = ([x_offset, 0, diameter / 2 - grasp_length], quat_from_euler([theta, 0, 0]))
         for j in range(1 + under):
             swap_xz = Pose(euler=[0, -math.pi / 2 + j * math.pi, 0])
             yield multiply(tool_pose, translate_rotate, swap_xz, translate_center, body_pose)
 
+
 def get_edge_cylinder_grasps(body, under=False, tool_pose=TOOL_POSE, body_pose=unit_pose(),
                              grasp_length=GRASP_LENGTH):
     center, (diameter, height) = approximate_as_cylinder(body, body_pose=body_pose)
-    translate_yz = Pose(point=[0, diameter/2, height/2 - grasp_length])
+    translate_yz = Pose(point=[0, diameter / 2, height / 2 - grasp_length])
     reflect_y = Pose(euler=[0, math.pi, 0])
-    translate_center = Pose(point=point_from_pose(body_pose)-center)
+    translate_center = Pose(point=point_from_pose(body_pose) - center)
     while True:
-        theta = random.uniform(0, 2*np.pi)
+        theta = random.uniform(0, 2 * np.pi)
         rotate_z = Pose(euler=[0, 0, theta])
         for i in range(1 + under):
             rotate_under = Pose(euler=[0, 0, i * math.pi])
             yield multiply(tool_pose, rotate_under, translate_yz, rotate_z,
                            reflect_y, translate_center, body_pose)
+
 
 #####################################
 
@@ -391,9 +421,9 @@ def get_cylinder_push(body, theta, under=False, body_quat=unit_quat(),
                       tilt=0., base_offset=0.02, side_offset=0.03):
     body_pose = (unit_point(), body_quat)
     center, (diameter, height) = approximate_as_cylinder(body, body_pose=body_pose)
-    translate_center = Pose(point=point_from_pose(body_pose)-center)
+    translate_center = Pose(point=point_from_pose(body_pose) - center)
     tilt_gripper = Pose(euler=Euler(pitch=tilt))
-    translate_x = Pose(point=[-diameter / 2 - side_offset, 0, 0]) # Compute as a function of theta
+    translate_x = Pose(point=[-diameter / 2 - side_offset, 0, 0])  # Compute as a function of theta
     translate_z = Pose(point=[0, 0, -height / 2 + base_offset])
     rotate_x = Pose(euler=Euler(yaw=theta))
     reflect_z = Pose(euler=Euler(pitch=math.pi))
@@ -404,11 +434,13 @@ def get_cylinder_push(body, theta, under=False, body_quat=unit_quat(),
                                reflect_z, translate_center, body_pose))
     return grasps
 
+
 #####################################
 
 # Button presses
 
 PRESS_OFFSET = 0.02
+
 
 def get_x_presses(body, max_orientations=1, body_pose=unit_pose(), top_offset=PRESS_OFFSET):
     # gripper_from_object
@@ -422,16 +454,18 @@ def get_x_presses(body, max_orientations=1, body_pose=unit_pose(), top_offset=PR
         press_poses += [multiply(TOOL_POSE, translate, swap_xz, translate_center, body_pose)]
     return press_poses
 
+
 def get_top_presses(body, tool_pose=TOOL_POSE, body_pose=unit_pose(), top_offset=PRESS_OFFSET, **kwargs):
     center, (_, height) = approximate_as_cylinder(body, body_pose=body_pose, **kwargs)
     reflect_z = Pose(euler=[0, math.pi, 0])
     translate_z = Pose(point=[0, 0, height / 2 + top_offset])
-    translate_center = Pose(point=point_from_pose(body_pose)-center)
+    translate_center = Pose(point=point_from_pose(body_pose) - center)
     while True:
-        theta = random.uniform(0, 2*np.pi)
+        theta = random.uniform(0, 2 * np.pi)
         rotate_z = Pose(euler=[0, 0, theta])
         yield multiply(tool_pose, translate_z, rotate_z,
                        reflect_z, translate_center, body_pose)
+
 
 GET_GRASPS = {
     'top': get_top_grasps,
@@ -448,13 +482,14 @@ DATABASES_DIR = '../databases'
 IR_FILENAME = '{}_{}_ir.pickle'
 IR_CACHE = {}
 
+
 def get_database_file(filename):
     directory = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(directory, DATABASES_DIR, filename)
 
 
 def load_inverse_reachability(arm, grasp_type):
-    key =  (arm, grasp_type)
+    key = (arm, grasp_type)
     if key not in IR_CACHE:
         filename = IR_FILENAME.format(grasp_type, arm)
         path = get_database_file(filename)
@@ -473,16 +508,17 @@ def learned_pose_generator(robot, gripper_pose, arm, grasp_type):
     # TODO: record collisions with the reachability database
     gripper_from_base_list = load_inverse_reachability(arm, grasp_type)
     random.shuffle(gripper_from_base_list)
-    #handles = []
+    # handles = []
     for gripper_from_base in gripper_from_base_list:
         base_point, base_quat = multiply(gripper_pose, gripper_from_base)
         x, y, _ = base_point
         _, _, theta = euler_from_quat(base_quat)
         base_values = (x, y, theta)
-        #handles.extend(draw_point(np.array([x, y, -0.1]), color=(1, 0, 0), size=0.05))
-        #set_base_values(robot, base_values)
-        #yield get_pose(robot)
+        # handles.extend(draw_point(np.array([x, y, -0.1]), color=(1, 0, 0), size=0.05))
+        # set_base_values(robot, base_values)
+        # yield get_pose(robot)
         yield base_values
+
 
 #####################################
 
@@ -495,22 +531,25 @@ MAX_KINECT_DISTANCE = 2.5
 PR2_CAMERA_MATRIX = get_camera_matrix(
     width=640, height=480, fx=772.55, fy=772.5)
 
+
 def get_pr2_view_section(z, camera_matrix=None):
     if camera_matrix is None:
         camera_matrix = PR2_CAMERA_MATRIX
     width, height = dimensions_from_camera_matrix(camera_matrix)
     pixels = [(0, 0), (width, height)]
-    return [z*ray_from_pixel(camera_matrix, p) for p in pixels]
+    return [z * ray_from_pixel(camera_matrix, p) for p in pixels]
+
 
 def get_pr2_field_of_view(**kwargs):
     # TODO: deprecate
     z = 1
     view_lower, view_upper = get_pr2_view_section(z=z, **kwargs)
     horizontal = angle_between([view_lower[0], 0, z],
-                               [view_upper[0], 0, z]) # 0.7853966439794928
+                               [view_upper[0], 0, z])  # 0.7853966439794928
     vertical = angle_between([0, view_lower[1], z],
-                             [0, view_upper[1], z]) # 0.6024511557247721
+                             [0, view_upper[1], z])  # 0.6024511557247721
     return horizontal, vertical
+
 
 def is_visible_point(camera_matrix, depth, point_world, camera_pose=unit_pose()):
     point_camera = tform_point(invert(camera_pose), point_world)
@@ -518,6 +557,7 @@ def is_visible_point(camera_matrix, depth, point_world, camera_pose=unit_pose())
         return False
     pixel = pixel_from_point(camera_matrix, point_camera)
     return pixel is not None
+
 
 def is_visible_aabb(aabb, **kwargs):
     # TODO: do intersect as well for identifying new obstacles
@@ -530,6 +570,7 @@ def is_visible_aabb(aabb, **kwargs):
     return not (np.any(body_lower[:2] < view_lower[:2]) or
                 np.any(view_upper[:2] < body_upper[:2]))
 
+
 def support_from_aabb(aabb, near=True):
     lower, upper = aabb
     min_x, min_y, min_z = lower
@@ -538,13 +579,15 @@ def support_from_aabb(aabb, near=True):
     return [(min_x, min_y, z), (min_x, max_y, z),
             (max_x, max_y, z), (max_x, min_y, z)]
 
+
 #####################################
 
 def cone_vertices_from_base(base):
     return [np.zeros(3)] + base
 
+
 def cone_wires_from_support(support, cone_only=True):
-    #vertices = cone_vertices_from_base(support)
+    # vertices = cone_vertices_from_base(support)
     # TODO: could obtain from cone_mesh_from_support
     # TODO: could also just return vertices and indices
     apex = np.zeros(3)
@@ -553,8 +596,8 @@ def cone_wires_from_support(support, cone_only=True):
         lines.append((apex, vertex))
     if cone_only:
         for i, v2 in enumerate(support):
-           v1 = support[i-1]
-           lines.append((v1, v2))
+            v1 = support[i - 1]
+            lines.append((v1, v2))
     else:
         for v1, v2 in combinations(support, 2):
             lines.append((v1, v2))
@@ -562,15 +605,17 @@ def cone_wires_from_support(support, cone_only=True):
         lines.append((apex, center))
     return lines
 
+
 def cone_mesh_from_support(support):
-    assert(len(support) == 4)
+    assert (len(support) == 4)
     vertices = cone_vertices_from_base(support)
     faces = [(1, 4, 3), (1, 3, 2)]
     for i in range(len(support)):
-        index1 = 1+i
-        index2 = 1+(i+1)%len(support)
+        index1 = 1 + i
+        index2 = 1 + (i + 1) % len(support)
         faces.append((0, index1, index2))
     return vertices, faces
+
 
 def get_viewcone_base(depth=MAX_VISUAL_DISTANCE, camera_matrix=None):
     if camera_matrix is None:
@@ -582,11 +627,13 @@ def get_viewcone_base(depth=MAX_VISUAL_DISTANCE, camera_matrix=None):
         vertices.append(ray[:3])
     return vertices
 
+
 def get_viewcone(depth=MAX_VISUAL_DISTANCE, camera_matrix=None, **kwargs):
     mesh = cone_mesh_from_support(get_viewcone_base(
         depth=depth, camera_matrix=camera_matrix))
     assert (mesh is not None)
     return create_mesh(mesh, **kwargs)
+
 
 def attach_viewcone(robot, head_name=HEAD_LINK_NAME, depth=MAX_VISUAL_DISTANCE,
                     camera_matrix=None, color=(1, 0, 0), **kwargs):
@@ -598,11 +645,12 @@ def attach_viewcone(robot, head_name=HEAD_LINK_NAME, depth=MAX_VISUAL_DISTANCE,
         if is_optical(head_name):
             rotation = Pose()
         else:
-            rotation = Pose(euler=Euler(roll=-np.pi/2, yaw=-np.pi/2)) # Apply in reverse order
+            rotation = Pose(euler=Euler(roll=-np.pi / 2, yaw=-np.pi / 2))  # Apply in reverse order
         p1 = tform_point(rotation, v1)
         p2 = tform_point(rotation, v2)
         lines.append(add_line(p1, p2, color=color, parent=robot, parent_link=head_link, **kwargs))
     return lines
+
 
 def draw_viewcone(pose=Pose(), depth=MAX_VISUAL_DISTANCE,
                   camera_matrix=None, color=(1, 0, 0), **kwargs):
@@ -615,13 +663,15 @@ def draw_viewcone(pose=Pose(), depth=MAX_VISUAL_DISTANCE,
         lines.append(add_line(p1, p2, color=color, **kwargs))
     return lines
 
+
 #####################################
 
 def is_optical(link_name):
     return 'optical' in link_name
 
+
 def inverse_visibility(pr2, point, head_name=HEAD_LINK_NAME, head_joints=None,
-                       max_iterations=100, step_size=0.5, tolerance=np.pi*1e-2, verbose=False):
+                       max_iterations=100, step_size=0.5, tolerance=np.pi * 1e-2, verbose=False):
     # https://github.com/PR2/pr2_controllers/blob/kinetic-devel/pr2_head_action/src/pr2_point_frame.cpp
     head_link = link_from_name(pr2, head_name)
     camera_axis = np.array([0, 0, 1]) if is_optical(head_name) else np.array([1, 0, 0])
@@ -640,7 +690,7 @@ def inverse_visibility(pr2, point, head_name=HEAD_LINK_NAME, head_joints=None,
                     break
                 normal_head = np.cross(camera_axis, point_head)
                 normal_world = tform_point((unit_point(), quat_from_pose(world_from_head)), normal_head)
-                correction_quat = quat_from_axis_angle(normal_world, step_size*error_angle)
+                correction_quat = quat_from_axis_angle(normal_world, step_size * error_angle)
                 correction_euler = euler_from_quat(correction_quat)
                 _, angular = compute_jacobian(pr2, head_link)
                 correction_conf = np.array([np.dot(angular[mj], correction_euler)
@@ -649,8 +699,8 @@ def inverse_visibility(pr2, point, head_name=HEAD_LINK_NAME, head_joints=None,
                     print('Iteration: {} | Error: {:.3f} | Correction: {}'.format(
                         iteration, error_angle, correction_conf))
                 head_conf += correction_conf
-                #if debug:
-                #wait_if_gui()
+                # if debug:
+                # wait_if_gui()
                 if np.all(correction_conf == 0):
                     return None
             else:
@@ -658,6 +708,7 @@ def inverse_visibility(pr2, point, head_name=HEAD_LINK_NAME, head_joints=None,
     if violates_limits(pr2, head_joints, head_conf):
         return None
     return head_conf
+
 
 def plan_scan_path(pr2, tilt=0):
     head_joints = joints_from_names(pr2, PR2_GROUPS['head'])
@@ -669,13 +720,14 @@ def plan_scan_path(pr2, tilt=0):
     if start_conf[0] > 0:
         first_conf, second_conf = second_conf, first_conf
     return [first_conf, second_conf]
-    #return [start_conf, first_conf, second_conf]
-    #third_conf = np.array([0, tilt])
-    #return [start_conf, first_conf, second_conf, third_conf]
+    # return [start_conf, first_conf, second_conf]
+    # third_conf = np.array([0, tilt])
+    # return [start_conf, first_conf, second_conf, third_conf]
+
 
 def plan_pause_scan_path(pr2, tilt=0):
     head_joints = joints_from_names(pr2, PR2_GROUPS['head'])
-    assert(not violates_limit(pr2, head_joints[1], tilt))
+    assert (not violates_limit(pr2, head_joints[1], tilt))
     theta, _ = get_pr2_field_of_view()
     lower_limit, upper_limit = get_joint_limits(pr2, head_joints[0])
     # Add one because half visible on limits
@@ -684,9 +736,11 @@ def plan_pause_scan_path(pr2, tilt=0):
     return [np.array([pan, tilt]) for pan in np.linspace(lower_limit + epsilon,
                                                          upper_limit - epsilon, n, endpoint=True)]
 
+
 #####################################
 
 Detection = namedtuple('Detection', ['body', 'distance'])
+
 
 def get_view_aabb(body, view_pose, **kwargs):
     with PoseSaver(body):
@@ -694,8 +748,10 @@ def get_view_aabb(body, view_pose, **kwargs):
         set_pose(body, body_view)
         return get_aabb(body, **kwargs)
 
+
 def get_view_oobb(body, view_pose, **kwargs):
     return OOBB(get_view_aabb(body, view_pose, **kwargs), view_pose)
+
 
 def get_detection_cone(pr2, body, camera_link=HEAD_LINK_NAME, depth=MAX_VISUAL_DISTANCE, **kwargs):
     head_link = link_from_name(pr2, camera_link)
@@ -706,6 +762,7 @@ def get_detection_cone(pr2, body, camera_link=HEAD_LINK_NAME, depth=MAX_VISUAL_D
     if not is_visible_aabb(body_aabb, **kwargs):
         return None, lower_z
     return cone_mesh_from_support(support_from_aabb(body_aabb)), lower_z
+
 
 def get_detections(pr2, p_false_neg=0, camera_link=HEAD_LINK_NAME,
                    exclude_links=set(), color=None, **kwargs):
@@ -724,15 +781,18 @@ def get_detections(pr2, p_false_neg=0, camera_link=HEAD_LINK_NAME,
                 and not any(link_pairs_collision(pr2, [link], cone)
                             for link in set(get_all_links(pr2)) - exclude_links):
             detections.append(Detection(body, z))
-        #wait_if_gui()
+        # wait_if_gui()
         remove_body(cone)
     return detections
+
 
 def get_visual_detections(pr2, **kwargs):
     return [body for body, _ in get_detections(pr2, depth=MAX_VISUAL_DISTANCE, **kwargs)]
 
+
 def get_kinect_registrations(pr2, **kwargs):
     return [body for body, _ in get_detections(pr2, depth=MAX_KINECT_DISTANCE, **kwargs)]
+
 
 # TODO: Gaussian on resulting pose
 
@@ -755,6 +815,7 @@ def get_base_extend_fn(robot):
     # TODO: plan base movements while checking edge feasibility with camera
     raise NotImplementedError()
 
+
 #####################################
 
 def close_until_collision(robot, gripper_joints, bodies=[], open_conf=None, closed_conf=None, num_steps=25, **kwargs):
@@ -774,9 +835,10 @@ def close_until_collision(robot, gripper_joints, bodies=[], open_conf=None, clos
         if any(pairwise_collision((robot, collision_links), body, **kwargs) for body in bodies):
             if i == 0:
                 return None
-            return close_path[i-1]
+            return close_path[i - 1]
     return close_path[-1]
-    #return None # False
+    # return None # False
+
 
 def compute_grasp_width(robot, arm, body, grasp_pose, **kwargs):
     tool_link = get_gripper_link(robot, arm)
